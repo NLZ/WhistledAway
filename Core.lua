@@ -103,9 +103,13 @@ do -- OnUpdate()
 
     for _, node in pairs(taxiNodes) do
       if FlightPointDataProviderMixin:ShouldShowTaxiNode(factionGroup, node) then
-        -- Ignore nodes with certain textureKitPrefix entries
-        if not TEXTURE_KIT_PREFIX_IGNORE[node.textureKitPrefix] then
-          TAXI_NODES[node.name] = node
+        if
+          -- Only add nodes in the current zone
+          node.name:find(currentZoneMapName, 1, true) and
+          -- Ignore nodes with certain textureKitPrefix entries
+          not TEXTURE_KIT_PREFIX_IGNORE[node.textureKitPrefix]
+        then
+          TAXI_NODES[#TAXI_NODES+1] = node
         end
       end
     end
@@ -190,11 +194,9 @@ end
 do -- UpdateTaxis()
   local THRESHOLD = 40 -- yards
   local last_x, last_y = -1, -1
-  local zoneTaxis = {}
 
   function Core:UpdateTaxis()
     if not whistleCanBeUsed() then
-      for k in pairs(zoneTaxis) do zoneTaxis[k] = nil end
       for k in pairs(nearestTaxis) do nearestTaxis[k] = nil end
       return
     end
@@ -207,33 +209,26 @@ do -- UpdateTaxis()
     last_x, last_y = x, y
 
     -- Clear data
-    for k in pairs(zoneTaxis) do zoneTaxis[k] = nil end
     for k in pairs(nearestTaxis) do nearestTaxis[k] = nil end
 
-    -- Get taxis in current zone
-    for _, taxi in pairs(TAXI_NODES) do
-      if (taxi.name:find(currentZoneMapName, 1, true)) then
-        zoneTaxis[#zoneTaxis+1] = taxi
-      end
-    end
-
     -- If no taxis, return
-    if (#zoneTaxis == 0) then return end
+    if (#TAXI_NODES == 0) then return end
 
     -- Calculate nearest taxis
-    local currentNearest = zoneTaxis[1]
+    local currentNearest = TAXI_NODES[1]
     local currentDistance = HBD:GetZoneDistance(currentMapID, x, y, currentZoneMapID, currentNearest.position.x, currentNearest.position.y)
     nearestTaxis[1] = currentNearest
 
-    for i=2, #zoneTaxis do
-      local taxi = zoneTaxis[i]
+    for i=2, #TAXI_NODES do
+      local taxi = TAXI_NODES[i]
       local distance = HBD:GetZoneDistance(currentMapID, x, y, currentZoneMapID, taxi.position.x, taxi.position.y)
-      -- If closer, wipe nearests and set to nearest
-      if (distance < (currentDistance - THRESHOLD)) then -- wipe and add
+      -- If closer outside threshold
+      if (distance <= (currentDistance - THRESHOLD)) then -- wipe and add
         for k in pairs(nearestTaxis) do nearestTaxis[k] = nil end
         nearestTaxis[#nearestTaxis+1] = taxi
         currentDistance = distance
-      elseif (distance < (currentDistance + THRESHOLD)) then -- add
+      -- If within threshold
+      elseif (distance <= (currentDistance + THRESHOLD)) then -- add
         nearestTaxis[#nearestTaxis+1] = taxi
       end
     end
