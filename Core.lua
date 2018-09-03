@@ -19,20 +19,6 @@ local Core = DethsLibLoader("DethsAddonLib", "1.0"):Create(AddonName)
 local PLAYER_FACTION_GROUP = nil
 local TAXI_NODES = {}
 
-local WHISTLE_MAPS = {
-  -- uiMapIDs for calls to C_TaxiMap.GetTaxiNodesForMap()
-  [630] = true, -- Azsuna (Broken Isles)
-  [885] = true, -- Antoran Wastes (Argus)
-  [830] = true, -- Krokuun (Argus)
-  [882] = true, -- Mac'Aree (Argus)
-  [895] = true, -- Tiragarde Sound (Kul'tiras)
-  [862] = true, -- Zuldazar (Zandalar)
-}
-
-local WHISTLE_MAPS_IGNORE = {
-  [627] = true, -- Dalaran
-}
-
 local WHISTLE_CONTINENTS = {
   -- uiMapIDs for continents where the FMW can be used
   [619] = true, -- Broken Isles
@@ -58,15 +44,11 @@ local function whistleCanBeUsed()
 end
 
 -- Debug
-local function debug(...) print(format("|cFF98FB98[%s]|r", AddonName, ...)) end
+-- local function debug(...) print(format("|cFF98FB98[%s]|r", AddonName), ...) end
 
 -- ============================================================================
 -- DAL Functions
 -- ============================================================================
-
-function Core:OnInitialize()
-  PLAYER_FACTION_GROUP = UnitFactionGroup("PLAYER")
-end
 
 do -- OnUpdate()
   local DELAY = 1 -- seconds
@@ -100,12 +82,18 @@ do -- OnUpdate()
       end
 
       if (mapInfo.mapType == Enum.UIMapType.Continent) then
-        canUseWhistle = WHISTLE_CONTINENTS[mapInfo.mapID] and not WHISTLE_MAPS_IGNORE[currentMapID]
+        canUseWhistle = WHISTLE_CONTINENTS[mapInfo.mapID]
         if not canUseWhistle then return end
-        -- Update taxi data for current map
-        local taxiNodes = C_TaxiMap.GetTaxiNodesForMap(mapID)
+        
+        -- Update taxi data for current zone
+        local taxiNodes = C_TaxiMap.GetTaxiNodesForMap(currentZoneMapID)
+        if not taxiNodes or (#taxiNodes == 0) then canUseWhistle = false return end
+        
+        local factionGroup = UnitFactionGroup("PLAYER")
+        
+        for k in pairs(TAXI_NODES) do TAXI_NODES[k] = nil end
         for _, taxiNodeInfo in pairs(taxiNodes) do
-          if FlightPointDataProviderMixin:ShouldShowTaxiNode(PLAYER_FACTION_GROUP, taxiNodeInfo) then
+          if FlightPointDataProviderMixin:ShouldShowTaxiNode(factionGroup, taxiNodeInfo) then
             TAXI_NODES[taxiNodeInfo.name] = taxiNodeInfo
           end
         end
@@ -120,7 +108,7 @@ end
 -- Pin Pool
 -- ============================================================================
 
-local getPin, clearPins do
+local getPin, clearPins, hidePins do
   local FMW_TEXTURE_ID = 132161
   local pins = {}
   local pool = {}
@@ -179,6 +167,10 @@ local getPin, clearPins do
     end
     HBDPins:RemoveAllWorldMapIcons(Addon)
   end
+
+  hidePins = function()
+    for _, pin in pairs(pins) do pin:Hide() end
+  end
 end
 
 -- ============================================================================
@@ -186,7 +178,7 @@ end
 -- ============================================================================
 
 do -- UpdateTaxis()
-  local THRESHOLD = 100 * 0.5 -- yards
+  local THRESHOLD = 40 -- yards
   local lastX, lastY = -1, -1
   local zoneTaxis = {}
 
@@ -244,12 +236,19 @@ end
 
 function Core:UpdatePins()
   if not whistleCanBeUsed() then clearPins() return end
-  if not WorldMapFrame:IsVisible() or not pinsNeedUpdate then return end
+  if not WorldMapFrame:IsVisible() then hidePins() return end
+  if not pinsNeedUpdate then return end
   pinsNeedUpdate = false
 
   -- Add pins to map
   for _, taxi in pairs(nearestTaxis) do
-    HBDPins:AddWorldMapIconMap(Addon, getPin(taxi.name), currentMapID, taxi.position.x, taxi.position.y)
+    HBDPins:AddWorldMapIconMap(
+      Addon,
+      getPin(taxi.name),
+      currentZoneMapID,
+      taxi.position.x,
+      taxi.position.y
+    )
   end
 end
 
