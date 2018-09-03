@@ -92,9 +92,12 @@ do -- OnUpdate()
         local factionGroup = UnitFactionGroup("PLAYER")
         
         for k in pairs(TAXI_NODES) do TAXI_NODES[k] = nil end
-        for _, taxiNodeInfo in pairs(taxiNodes) do
-          if FlightPointDataProviderMixin:ShouldShowTaxiNode(factionGroup, taxiNodeInfo) then
-            TAXI_NODES[taxiNodeInfo.name] = taxiNodeInfo
+        for _, node in pairs(taxiNodes) do
+          if FlightPointDataProviderMixin:ShouldShowTaxiNode(factionGroup, node) then
+            -- Ignore ferry boats
+            if not (node.textureKitPrefix and node.textureKitPrefix:find("Ferry", 1, true)) then
+              TAXI_NODES[node.name] = node
+            end
           end
         end
       end
@@ -118,7 +121,7 @@ local getPin, clearPins, hidePins do
     -- Show highlight
     self.highlight:SetAlpha(0.4)
     -- Show tooltip
-    WorldMapTooltip:SetOwner(self, "ANCHOR_TOP")
+    WorldMapTooltip:SetOwner(self, "ANCHOR_RIGHT")
     WorldMapTooltip:SetText(AddonName)
     WorldMapTooltip:AddLine(self.name, 1, 1, 1)
     WorldMapTooltip:Show()
