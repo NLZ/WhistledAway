@@ -5,7 +5,8 @@ local HBD = LibStub("HereBeDragons-2.0")
 local HBDPins = LibStub("HereBeDragons-Pins-2.0")
 
 -- Upvalues
-local format, pairs, print, tconcat = format, pairs, print, table.concat
+local format, next, pairs, print, tconcat =
+      format, next, pairs, print, table.concat
 
 local C_Map, C_TaxiMap, Enum = C_Map, C_TaxiMap, Enum
 local WorldMapFrame, WorldMapTooltip = WorldMapFrame, WorldMapTooltip
@@ -43,11 +44,10 @@ local function whistleCanBeUsed()
   return canUseWhistle and not IsIndoors()
 end
 
--- Debug
 -- local function debug(...) print(format("|cFF98FB98[%s]|r", AddonName), ...) end
 
 -- ============================================================================
--- DAL Functions
+-- OnUpdate() and HBD Callback
 -- ============================================================================
 
 do -- OnUpdate()
@@ -63,47 +63,54 @@ do -- OnUpdate()
     self:UpdatePins()
   end
 
+  -- Ignore nodes with these textureKitPrefix entries
+  local TEXTURE_KIT_PREFIX_IGNORE = {
+    FlightMaster_Ferry = true
+  }
+
   -- HBD Callback
   HBD.RegisterCallback(AddonName, "PlayerZoneChanged", function(_, mapID)
+    canUseWhistle = false
+
+    if not mapID then return end
     currentMapID = mapID
     currentZoneMapID = mapID
 
-    local mapInfo = C_Map.GetMapInfo(mapID or 0)
-    if mapInfo and mapInfo.name then
-      currentZoneMapName = mapInfo.name
+    local mapInfo = C_Map.GetMapInfo(mapID)
+    if not mapInfo then return end
+    currentZoneMapName = mapInfo.name
 
-      -- Update data based on current zone and continent
-      while mapInfo.mapType and (mapInfo.mapType > Enum.UIMapType.Continent) do
-        if (mapInfo.mapType == Enum.UIMapType.Zone) then
-          currentZoneMapName = mapInfo.name
-          currentZoneMapID = mapInfo.mapID
-        end
-        mapInfo = C_Map.GetMapInfo(mapInfo.parentMapID)
+    -- Update data based on current zone and continent
+    while mapInfo.mapType and (mapInfo.mapType > Enum.UIMapType.Continent) do
+      if (mapInfo.mapType == Enum.UIMapType.Zone) then
+        currentZoneMapName = mapInfo.name
+        currentZoneMapID = mapInfo.mapID
       end
-
-      if (mapInfo.mapType == Enum.UIMapType.Continent) then
-        canUseWhistle = WHISTLE_CONTINENTS[mapInfo.mapID]
-        if not canUseWhistle then return end
-        
-        -- Update taxi data for current zone
-        local taxiNodes = C_TaxiMap.GetTaxiNodesForMap(currentZoneMapID)
-        if not taxiNodes or (#taxiNodes == 0) then canUseWhistle = false return end
-        
-        local factionGroup = UnitFactionGroup("PLAYER")
-        
-        for k in pairs(TAXI_NODES) do TAXI_NODES[k] = nil end
-        for _, node in pairs(taxiNodes) do
-          if FlightPointDataProviderMixin:ShouldShowTaxiNode(factionGroup, node) then
-            -- Ignore ferry boats
-            if not (node.textureKitPrefix and node.textureKitPrefix:find("Ferry", 1, true)) then
-              TAXI_NODES[node.name] = node
-            end
-          end
-        end
-      end
-
-      timer = DELAY -- update immediately
+      mapInfo = C_Map.GetMapInfo(mapInfo.parentMapID)
+      if not mapInfo then return end
     end
+
+    if (mapInfo.mapType ~= Enum.UIMapType.Continent) then return end
+    canUseWhistle = WHISTLE_CONTINENTS[mapInfo.mapID]
+    if not canUseWhistle then return end
+    
+    -- Update taxi data for current zone
+    local taxiNodes = C_TaxiMap.GetTaxiNodesForMap(currentZoneMapID)
+    if not taxiNodes or (#taxiNodes == 0) then canUseWhistle = false return end
+    
+    local factionGroup = UnitFactionGroup("PLAYER")
+    for k in pairs(TAXI_NODES) do TAXI_NODES[k] = nil end
+
+    for _, node in pairs(taxiNodes) do
+      if FlightPointDataProviderMixin:ShouldShowTaxiNode(factionGroup, node) then
+        -- Ignore nodes with certain textureKitPrefix entries
+        if not TEXTURE_KIT_PREFIX_IGNORE[node.textureKitPrefix] then
+          TAXI_NODES[node.name] = node
+        end
+      end
+    end
+
+    timer = DELAY -- update immediately
   end)
 end
 
@@ -182,7 +189,7 @@ end
 
 do -- UpdateTaxis()
   local THRESHOLD = 40 -- yards
-  local lastX, lastY = -1, -1
+  local last_x, last_y = -1, -1
   local zoneTaxis = {}
 
   function Core:UpdateTaxis()
@@ -193,12 +200,11 @@ do -- UpdateTaxis()
     end
 
     local x, y, mapID = HBD:GetPlayerZonePosition()
-    if not x then return end
+    if not (x and y and mapID) then return end
 
     -- Return if player hasn't moved
-    if (lastX == x) and (lastY == y) then return end
-    lastX = x
-    lastY = y
+    if (last_x == x) and (last_y == y) then return end
+    last_x, last_y = x, y
 
     -- Clear data
     for k in pairs(zoneTaxis) do zoneTaxis[k] = nil end
