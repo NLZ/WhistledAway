@@ -1,0 +1,30 @@
+package-as: WhistledAway
+enable-nolib-creation: no
+
+externals:
+  - Libs/DethsLibLoader:
+    url: git://github.com/moody/DethsLibLoader.git
+  - Libs/DethsAddonLib:
+    url: git://github.com/moody/DethsAddonLib.git
+
+ignore:
+  - WhistledAway.png
+  - CHANGELOG.md
+  - README.md
+  - Libs/DethsLibLoader/DethsLibLoader.toc
+  - Libs/DethsLibLoader/LICENSE.md
+  - Libs/DethsLibLoader/README.md
+  - Libs/DethsLibLoader/Tests
+  - Libs/DethsAddonLib/DethsAddonLib.toc
+  - Libs/DethsAddonLib/LICENSE.md
+  - Libs/DethsAddonLib/README.md
+  - Libs/DethsAddonLib/Tests.lua
+  - Libs/herebedragons/HereBeDragons.toc
+  - Libs/herebedragons/HereBeDragons-1.0.lua
+  - Libs/herebedragons/HereBeDragons-Pins-1.0.lua
+  - Libs/herebedragons/HereBeDragons-Migrate.lua
+  - Libs/herebedragons/1.0-compat
+
+manual-changelog:
+  filename: CHANGELOG.md
+  markup-type: markdown

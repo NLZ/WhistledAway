@@ -1,0 +1,9 @@
+## Interface: 80000
+## Title: WhistledAway
+## Author: Dethanyel
+## Version: 8.0.0
+## Notes: Shows the nearest flight master on your map and whistle.
+
+Libs/Libs.xml
+
+Core.lua

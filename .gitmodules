@@ -1,0 +1,9 @@
+[submodule "Libs/herebedragons"]
+	path = Libs/herebedragons
+	url = https://repos.wowace.com/wow/herebedragons
+[submodule "Libs/DethsLibLoader"]
+	path = Libs/DethsLibLoader
+	url = https://github.com/moody/DethsLibLoader.git
+[submodule "Libs/DethsAddonLib"]
+	path = Libs/DethsAddonLib
+	url = https://github.com/moody/DethsAddonLib.git
