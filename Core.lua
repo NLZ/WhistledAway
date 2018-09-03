@@ -40,18 +40,22 @@ local nearestTaxis = {}
 -- Helper Functions
 -- ============================================================================
 
+local function colorText(s)
+  return format("|cFF98FB98%s|r", s)
+end
+
 local function whistleCanBeUsed()
   return canUseWhistle and not IsIndoors()
 end
 
--- local function debug(...) print(format("|cFF98FB98[%s]|r", AddonName), ...) end
+-- local function debug(...) print(colorText("["..AddonName.."]"), ...) end
 
 -- ============================================================================
 -- OnUpdate() and HBD Callback
 -- ============================================================================
 
 do -- OnUpdate() Script
-  local frame = CreateFrame("Frame", Addon.."UpdateFrame")
+  local frame = CreateFrame("Frame", AddonName.."UpdateFrame")
   local timer = 0
 
   frame:SetScript("OnUpdate", function(_, elapsed)
@@ -123,6 +127,7 @@ end
 -- ============================================================================
 
 local getPin, clearPins, hidePins do
+  local TITLE = colorText(AddonName)
   local FMW_TEXTURE_ID = 132161
   local pins = {}
   local pool = {}
@@ -133,7 +138,7 @@ local getPin, clearPins, hidePins do
     self.highlight:SetAlpha(0.4)
     -- Show tooltip
     WorldMapTooltip:SetOwner(self, "ANCHOR_RIGHT")
-    WorldMapTooltip:SetText(AddonName)
+    WorldMapTooltip:SetText(TITLE)
     WorldMapTooltip:AddLine(self.name, 1, 1, 1)
     WorldMapTooltip:Show()
   end
@@ -262,7 +267,7 @@ end
 
 do
   local FMW_ID = "141605" -- Flight Master's Whistle Item ID
-  local LEFT = format("|cFF98FB98%s:|r", AddonName)
+  local LEFT = colorText(AddonName..":")
   local buffer = {}
 
   local function sortFunc(a, b) return a.name < b.name end
