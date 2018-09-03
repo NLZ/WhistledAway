@@ -14,7 +14,7 @@ local FlightPointDataProviderMixin = FlightPointDataProviderMixin
 local IsIndoors, UnitFactionGroup = IsIndoors, UnitFactionGroup
 
 -- Modules
-local Core = DethsLibLoader("DethsAddonLib", "1.0"):Create(AddonName)
+local Core = {}
 
 -- Consts
 local PLAYER_FACTION_GROUP = nil
@@ -50,19 +50,21 @@ end
 -- OnUpdate() and HBD Callback
 -- ============================================================================
 
-do -- OnUpdate()
-  local DELAY = 1 -- seconds
-  local timer = DELAY
+do -- OnUpdate() Script
+  local frame = CreateFrame("Frame", Addon.."UpdateFrame")
+  local timer = 0
 
-  function Core:OnUpdate(elapsed)
+  frame:SetScript("OnUpdate", function(_, elapsed)
     timer = timer + elapsed
-    if (timer >= DELAY) then
-      self:UpdateTaxis()
+    if (timer >= 1) then
+      Core:UpdateTaxis()
       timer = 0
     end
-    self:UpdatePins()
-  end
+    Core:UpdatePins()
+  end)
+end
 
+do -- HBD Callback
   -- Ignore nodes with these textureKitPrefix entries
   local TEXTURE_KIT_PREFIX_IGNORE = {
     FlightMaster_Ferry = true
@@ -113,8 +115,6 @@ do -- OnUpdate()
         end
       end
     end
-
-    timer = DELAY -- update immediately
   end)
 end
 
