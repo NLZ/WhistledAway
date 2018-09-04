@@ -2,7 +2,8 @@ package-as: WhistledAway
 enable-nolib-creation: no
 
 ignore:
-  - WhistledAway.png
+  - MapIcon.png
+  - Tooltip.png
   - CHANGELOG.md
   - README.md
 
