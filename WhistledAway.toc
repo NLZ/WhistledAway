@@ -1,7 +1,7 @@
 ## Interface: 80000
 ## Title: WhistledAway
 ## Author: Dethanyel
-## Version: 8.0.0
+## Version: 8.0.1
 ## Notes: Indicates the nearest flight master on the Flight Master's Whistle.
 
 Libs/Libs.xml
