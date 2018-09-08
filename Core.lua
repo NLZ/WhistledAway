@@ -294,6 +294,7 @@ end
 
 do
   local LEFT = colorText(AddonName..":")
+  local DELIMITER = colorText(" | ")
   local buffer = {}
 
   local function sortFunc(a, b) return a.name < b.name end
@@ -309,7 +310,7 @@ do
     tsort(nearestTaxis, sortFunc)
     for k in next, buffer do buffer[k] = nil end
     for i=1, (#nearestTaxis - 1) do
-      buffer[#buffer+1] = getTaxiName(nearestTaxis[i])..", "
+      buffer[#buffer+1] = getTaxiName(nearestTaxis[i])..DELIMITER
     end
     buffer[#buffer+1] = getTaxiName(nearestTaxis[#nearestTaxis])
     return tconcat(buffer)
