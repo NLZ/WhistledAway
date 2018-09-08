@@ -5,34 +5,39 @@ local HBD = LibStub("HereBeDragons-2.0")
 local HBDPins = LibStub("HereBeDragons-Pins-2.0")
 
 -- Upvalues
-local format, next, pairs, print, tconcat =
-      format, next, pairs, print, table.concat
+local format, next, tonumber, tconcat,      tsort =
+      format, next, tonumber, table.concat, table.sort
 
+local BACKPACK_CONTAINER, NUM_BAG_SLOTS = BACKPACK_CONTAINER, NUM_BAG_SLOTS
+local GetContainerNumSlots, GetContainerItemID = GetContainerNumSlots, GetContainerItemID
 local C_Map, C_TaxiMap, Enum = C_Map, C_TaxiMap, Enum
 local WorldMapFrame, WorldMapTooltip = WorldMapFrame, WorldMapTooltip
 local FlightPointDataProviderMixin = FlightPointDataProviderMixin
-local IsIndoors, UnitFactionGroup = IsIndoors, UnitFactionGroup
+local IsIndoors, UnitFactionGroup, UnitLevel = IsIndoors, UnitFactionGroup, UnitLevel
 
 -- Modules
 local Core = {}
 
 -- Consts
+local FMW_ID = 141605 -- Flight Master's Whistle Item ID
 local PLAYER_FACTION_GROUP = nil
 local TAXI_NODES = {}
 
+-- Continents where the FMW can be used
 local WHISTLE_CONTINENTS = {
-  -- uiMapIDs for continents where the FMW can be used
-  [619] = true, -- Broken Isles
-  [905] = true, -- Argus
-  [876] = true, -- Kul'tiras
-  [875] = true, -- Zandalar
+  -- [uiMapID] = level to use FMW
+  [619] = 110, -- Broken Isles
+  [905] = 110, -- Argus
+  [876] = 120, -- Kul'tiras
+  [875] = 120, -- Zandalar
 }
 
 -- Variables
 local currentMapID = -1     -- map where the player is, such as Boralus
 local currentZoneMapID = -1 -- map of the actual zone, such as Tiragarde Sound
 local currentZoneMapName = ""
-local canUseWhistle = false
+local minWhistleLevel = nil
+local playerHasWhistle = false
 local pinsNeedUpdate = false
 local nearestTaxis = {}
 
@@ -44,8 +49,13 @@ local function colorText(s)
   return format("|cFF98FB98%s|r", s)
 end
 
+-- Returns true if the player can use the flight master's whistle.
 local function whistleCanBeUsed()
-  return canUseWhistle and not IsIndoors()
+  return
+    playerHasWhistle and
+    minWhistleLevel and
+    (UnitLevel("PLAYER") >= minWhistleLevel) and
+    not IsIndoors()
 end
 
 -- local function debug(...) print(colorText("["..AddonName.."]"), ...) end
@@ -66,6 +76,23 @@ do -- OnUpdate() Script
     end
     Core:UpdatePins()
   end)
+
+  frame:SetScript("OnEvent", function(_, event)
+    if (event == "BAG_UPDATE") then -- Check for whistle
+      for bag = BACKPACK_CONTAINER, NUM_BAG_SLOTS do
+        for slot = 1, GetContainerNumSlots(bag) do
+          local itemID = GetContainerItemID(bag, slot)
+          if itemID and (itemID == FMW_ID) then
+            playerHasWhistle = true
+            return
+          end
+        end
+      end
+      playerHasWhistle = false
+    end
+  end)
+
+  frame:RegisterEvent("BAG_UPDATE")
 end
 
 do -- HBD Callback
@@ -76,7 +103,7 @@ do -- HBD Callback
 
   -- HBD Callback
   HBD.RegisterCallback(AddonName, "PlayerZoneChanged", function(_, mapID)
-    canUseWhistle = false
+    minWhistleLevel = nil
 
     if not mapID then return end
     currentMapID = mapID
@@ -97,17 +124,17 @@ do -- HBD Callback
     end
 
     if (mapInfo.mapType ~= Enum.UIMapType.Continent) then return end
-    canUseWhistle = WHISTLE_CONTINENTS[mapInfo.mapID]
-    if not canUseWhistle then return end
+    minWhistleLevel = WHISTLE_CONTINENTS[mapInfo.mapID]
+    if not minWhistleLevel then return end
     
     -- Update taxi data for current zone
     local taxiNodes = C_TaxiMap.GetTaxiNodesForMap(currentZoneMapID)
-    if not taxiNodes or (#taxiNodes == 0) then canUseWhistle = false return end
+    if not taxiNodes or (#taxiNodes == 0) then minWhistleLevel = nil return end
     
     local factionGroup = UnitFactionGroup("PLAYER")
-    for k in pairs(TAXI_NODES) do TAXI_NODES[k] = nil end
+    for k in next, TAXI_NODES do TAXI_NODES[k] = nil end
 
-    for _, node in pairs(taxiNodes) do
+    for _, node in next, taxiNodes do
       if FlightPointDataProviderMixin:ShouldShowTaxiNode(factionGroup, node) then
         if
           -- Only add nodes in the current zone
@@ -180,7 +207,7 @@ local getPin, clearPins, hidePins do
   end
 
   clearPins = function()
-    for _, pin in pairs(pins) do
+    for _, pin in next, pins do
       pin:Hide()
       pool[pin] = true
     end
@@ -188,7 +215,7 @@ local getPin, clearPins, hidePins do
   end
 
   hidePins = function()
-    for _, pin in pairs(pins) do pin:Hide() end
+    for _, pin in next, pins do pin:Hide() end
   end
 end
 
@@ -202,7 +229,7 @@ do -- UpdateTaxis()
 
   function Core:UpdateTaxis()
     if not whistleCanBeUsed() then
-      for k in pairs(nearestTaxis) do nearestTaxis[k] = nil end
+      for k in next, nearestTaxis do nearestTaxis[k] = nil end
       return
     end
 
@@ -214,7 +241,7 @@ do -- UpdateTaxis()
     last_x, last_y = x, y
 
     -- Clear data
-    for k in pairs(nearestTaxis) do nearestTaxis[k] = nil end
+    for k in next, nearestTaxis do nearestTaxis[k] = nil end
 
     -- If no taxis, return
     if (#TAXI_NODES == 0) then return end
@@ -229,7 +256,7 @@ do -- UpdateTaxis()
       local distance = HBD:GetZoneDistance(currentMapID, x, y, currentZoneMapID, taxi.position.x, taxi.position.y)
       -- If closer outside threshold
       if (distance <= (currentDistance - THRESHOLD)) then -- wipe and add
-        for k in pairs(nearestTaxis) do nearestTaxis[k] = nil end
+        for k in next, nearestTaxis do nearestTaxis[k] = nil end
         nearestTaxis[#nearestTaxis+1] = taxi
         currentDistance = distance
       -- If within threshold
@@ -250,7 +277,7 @@ function Core:UpdatePins()
   pinsNeedUpdate = false
 
   -- Add pins to map
-  for _, taxi in pairs(nearestTaxis) do
+  for _, taxi in next, nearestTaxis do
     HBDPins:AddWorldMapIconMap(
       Addon,
       getPin(taxi.name),
@@ -266,7 +293,6 @@ end
 -- ============================================================================
 
 do
-  local FMW_ID = "141605" -- Flight Master's Whistle Item ID
   local LEFT = colorText(AddonName..":")
   local buffer = {}
 
@@ -280,8 +306,8 @@ do
 
   local function getTaxiNames()
     if (#nearestTaxis == 1) then return getTaxiName(nearestTaxis[1]) end
-    table.sort(nearestTaxis, sortFunc)
-    for k in pairs(buffer) do buffer[k] = nil end
+    tsort(nearestTaxis, sortFunc)
+    for k in next, buffer do buffer[k] = nil end
     for i=1, (#nearestTaxis - 1) do
       buffer[#buffer+1] = getTaxiName(nearestTaxis[i])..", "
     end
@@ -293,9 +319,9 @@ do
     if not whistleCanBeUsed() or (#nearestTaxis == 0) then return end
 
     -- Verify the item is the Flight Master's Whistle
-    local link = select(2, self:GetItem())
+    local _, link = self:GetItem()
     if not link then return end
-    local id = link:match("item:(%d+)")
+    local id = tonumber(link:match("item:(%d+)") or "")
     if not id or (id ~= FMW_ID) then return end
     
     self:AddLine(" ") -- Blank Line
