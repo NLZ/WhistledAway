@@ -35,7 +35,6 @@ local WHISTLE_CONTINENTS = {
 -- Variables
 local currentMapID = -1     -- map where the player is, such as Boralus
 local currentZoneMapID = -1 -- map of the actual zone, such as Tiragarde Sound
-local currentZoneMapName = ""
 local minWhistleLevel = nil
 local playerHasWhistle = false
 local pinsNeedUpdate = false
@@ -110,8 +109,8 @@ do -- HBD Callback
     currentZoneMapID = mapID
 
     local mapInfo = C_Map.GetMapInfo(mapID)
-    if not mapInfo then return end
-    currentZoneMapName = mapInfo.name
+    if not mapInfo or (mapInfo.mapType > Enum.UIMapType.Zone) then return end
+    local currentZoneMapName = mapInfo.name
 
     -- Update data based on current zone and continent
     while mapInfo.mapType and (mapInfo.mapType > Enum.UIMapType.Continent) do
@@ -126,10 +125,15 @@ do -- HBD Callback
     if (mapInfo.mapType ~= Enum.UIMapType.Continent) then return end
     minWhistleLevel = WHISTLE_CONTINENTS[mapInfo.mapID]
     if not minWhistleLevel then return end
-    
+
     -- Update taxi data for current zone
-    local taxiNodes = C_TaxiMap.GetTaxiNodesForMap(currentZoneMapID)
-    if not taxiNodes or (#taxiNodes == 0) then minWhistleLevel = nil return end
+    local taxiNodes = C_TaxiMap.GetTaxiNodesForMap(mapID)
+    if not taxiNodes or (#taxiNodes == 0) then
+      taxiNodes = C_TaxiMap.GetTaxiNodesForMap(currentZoneMapID)
+      if not taxiNodes or (#taxiNodes == 0) then minWhistleLevel = nil return end
+    else
+      currentZoneMapID = mapID
+    end
     
     local factionGroup = UnitFactionGroup("PLAYER")
     for k in next, TAXI_NODES do TAXI_NODES[k] = nil end
