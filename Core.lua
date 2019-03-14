@@ -11,7 +11,7 @@ local format, next, tonumber, tconcat,      tsort =
 local BACKPACK_CONTAINER, NUM_BAG_SLOTS = BACKPACK_CONTAINER, NUM_BAG_SLOTS
 local GetContainerNumSlots, GetContainerItemID = GetContainerNumSlots, GetContainerItemID
 local C_Map, C_TaxiMap, Enum = C_Map, C_TaxiMap, Enum
-local WorldMapFrame, WorldMapTooltip = WorldMapFrame, WorldMapTooltip
+local WorldMapFrame, GameTooltip = WorldMapFrame, GameTooltip
 local FlightPointDataProviderMixin = FlightPointDataProviderMixin
 local IsIndoors, UnitFactionGroup, UnitLevel = IsIndoors, UnitFactionGroup, UnitLevel
 
@@ -134,7 +134,7 @@ do -- HBD Callback
     else
       currentZoneMapID = mapID
     end
-    
+
     local factionGroup = UnitFactionGroup("PLAYER")
     for k in next, TAXI_NODES do TAXI_NODES[k] = nil end
 
@@ -168,20 +168,20 @@ local getPin, clearPins, hidePins do
     -- Show highlight
     self.highlight:SetAlpha(0.4)
     -- Show tooltip
-    WorldMapTooltip:SetOwner(self, "ANCHOR_RIGHT")
-    WorldMapTooltip:SetText(TITLE)
-    WorldMapTooltip:AddLine(self.name, 1, 1, 1)
-    WorldMapTooltip:Show()
+    GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+    GameTooltip:SetText(TITLE)
+    GameTooltip:AddLine(self.name, 1, 1, 1)
+    GameTooltip:Show()
   end
 
   local function onLeave(self)
     self.highlight:SetAlpha(0)
-    WorldMapTooltip:Hide()
+    GameTooltip:Hide()
   end
 
   getPin = function(name)
     local pin = next(pool)
-    
+
     if pin then
       pool[pin] = nil
     else
@@ -328,7 +328,7 @@ do
     if not link then return end
     local id = tonumber(link:match("item:(%d+)") or "")
     if not id or (id ~= FMW_ID) then return end
-    
+
     self:AddLine(" ") -- Blank Line
     self:AddDoubleLine(LEFT, getTaxiNames(), nil, nil, nil, 1, 1, 1)
   end
